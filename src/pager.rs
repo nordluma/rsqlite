@@ -22,6 +22,7 @@ const PAGE_CELL_COUNT_OFFSET: usize = 3;
 const PAGE_CELL_CONTENT_OFFSET: usize = 5;
 const PAGE_FRAGMENTED_BYTES_COUNT_OFFSET: usize = 7;
 
+#[derive(Debug)]
 pub struct Pager<I: Read + Seek = std::fs::File> {
     input: I,
     page_size: usize,
