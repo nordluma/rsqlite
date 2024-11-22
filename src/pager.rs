@@ -9,7 +9,7 @@ use crate::page;
 
 // header consts
 pub const HEADER_SIZE: usize = 100;
-const HEADER_PREFIX: &[u8] = b"SQLITE format 3\0";
+const HEADER_PREFIX: &[u8] = b"SQLite format 3\0";
 const HEADER_PAGE_SIZE_OFFSET: usize = 16;
 
 const PAGE_MAX_SIZE: u32 = 65536;
@@ -71,7 +71,10 @@ impl<I: Read + Seek> Pager<I> {
 pub fn parse_header(buffer: &[u8]) -> Result<page::DbHeader, anyhow::Error> {
     if !buffer.starts_with(HEADER_PREFIX) {
         let prefix = String::from_utf8_lossy(&buffer[..HEADER_PREFIX.len()]);
-        anyhow::bail!("invalid header prefix: {prefix}");
+        anyhow::bail!(format!(
+            "invalid header prefix: {prefix} - expected: {}",
+            String::from_utf8(HEADER_PREFIX.to_vec()).unwrap(),
+        ));
     }
 
     let page_size_raw = read_be_word_at(buffer, HEADER_PAGE_SIZE_OFFSET);
