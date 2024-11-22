@@ -1,4 +1,9 @@
-use std::usize;
+use std::{
+    collections::HashMap,
+    io::{Read, Seek, SeekFrom},
+};
+
+use anyhow::Context;
 
 use crate::page;
 
@@ -17,6 +22,51 @@ const PAGE_FIRST_FREEBLOCK_OFFSET: usize = 1;
 const PAGE_CELL_COUNT_OFFSET: usize = 3;
 const PAGE_CELL_CONTENT_OFFSET: usize = 5;
 const PAGE_FRAGMENTED_BYTES_COUNT_OFFSET: usize = 7;
+
+pub struct Pager<I: Read + Seek = std::fs::File> {
+    input: I,
+    page_size: usize,
+    pages: HashMap<usize, page::Page>,
+}
+
+impl<I: Read + Seek> Pager<I> {
+    pub fn new(input: I, page_size: usize) -> Self {
+        Self {
+            input,
+            page_size,
+            pages: HashMap::new(),
+        }
+    }
+
+    pub fn read_page(&mut self, n: usize) -> Result<&page::Page, anyhow::Error> {
+        if self.pages.contains_key(&n) {
+            return Ok(self.pages.get(&n).expect("some checked above"));
+        }
+
+        let page = self.load_page(n)?;
+        self.pages.insert(n, page);
+
+        Ok(self
+            .pages
+            .get(&n)
+            .expect("page was inserted before this call"))
+    }
+
+    fn load_page(&mut self, n: usize) -> Result<page::Page, anyhow::Error> {
+        let offset = n.saturating_add(1) * self.page_size;
+
+        self.input
+            .seek(SeekFrom::Start(offset as u64))
+            .context("failed to seek to page start")?;
+
+        let mut buffer = vec![0; self.page_size];
+        self.input
+            .read_exact(&mut buffer)
+            .context("failed to read page")?;
+
+        parse_page(&buffer, n)
+    }
+}
 
 pub fn parse_header(buffer: &[u8]) -> Result<page::DbHeader, anyhow::Error> {
     if !buffer.starts_with(HEADER_PREFIX) {
