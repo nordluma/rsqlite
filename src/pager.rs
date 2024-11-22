@@ -17,7 +17,6 @@ const PAGE_LEAF_HEADER_SIZE: usize = 8;
 
 const PAGE_LEAF_TABLE_ID: u8 = 13;
 
-const PAGE_LEAF_HEADER: usize = 8;
 const PAGE_FIRST_FREEBLOCK_OFFSET: usize = 1;
 const PAGE_CELL_COUNT_OFFSET: usize = 3;
 const PAGE_CELL_CONTENT_OFFSET: usize = 5;
