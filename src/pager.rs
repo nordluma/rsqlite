@@ -181,7 +181,7 @@ fn parse_table_leaf_cell(mut buffer: &[u8]) -> Result<page::TableLeafCell, anyho
 ///
 /// The function reads at most 8 bytes, allowing it to decode integers up to 56 bits. For larger
 /// values, it will stop reading after 8 bytes.
-fn read_varint_at(buffer: &[u8], mut offset: usize) -> (u8, i64) {
+pub fn read_varint_at(buffer: &[u8], mut offset: usize) -> (u8, i64) {
     let mut size = 0;
     let mut result = 0;
 
