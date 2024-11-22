@@ -20,7 +20,7 @@ fn cli(mut db: db::Db) -> Result<(), anyhow::Error> {
             _ => println!("Unrecognized command '{}'", line_buffer.trim()),
         }
 
-        print_flushed("\nrsqlite")?;
+        print_flushed("\nrsqlite> ")?;
         line_buffer.clear();
     }
 
