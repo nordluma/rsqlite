@@ -15,7 +15,7 @@ const HEADER_PAGE_SIZE_OFFSET: usize = 16;
 const PAGE_MAX_SIZE: u32 = 65536;
 const PAGE_LEAF_HEADER_SIZE: usize = 8;
 
-const PAGE_LEAF_TABLE_ID: u8 = 13;
+const PAGE_LEAF_TABLE_ID: u8 = 0x0D; // 13
 
 const PAGE_FIRST_FREEBLOCK_OFFSET: usize = 1;
 const PAGE_CELL_COUNT_OFFSET: usize = 3;
