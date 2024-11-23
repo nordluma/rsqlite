@@ -1,6 +1,13 @@
 use anyhow::Context;
 
-use crate::sql::tokenizer::Token;
+use crate::sql::{
+    ast::{Column, Expr},
+    tokenizer::Token,
+};
+
+use super::ast::{
+    ExprResultColumn, ResultColumn, SelectCore, SelectFrom, SelectStatement, Statement,
+};
 
 #[derive(Debug)]
 struct ParserState {
@@ -11,6 +18,65 @@ struct ParserState {
 impl ParserState {
     fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, pos: 0 }
+    }
+
+    fn parse_statement(&mut self) -> Result<Statement, anyhow::Error> {
+        Ok(Statement::Select(self.parse_select()?))
+    }
+
+    fn parse_select(&mut self) -> Result<SelectStatement, anyhow::Error> {
+        self.expect_eq(Token::Select)?;
+        let result_columns = self.parse_result_columns()?;
+        self.expect_eq(Token::From)?;
+        let from = self.parse_select_from()?;
+
+        Ok(SelectStatement {
+            core: SelectCore {
+                result_columns,
+                from,
+            },
+        })
+    }
+
+    fn parse_select_from(&mut self) -> Result<SelectFrom, anyhow::Error> {
+        Ok(SelectFrom::Table(self.expect_identifier()?.to_string()))
+    }
+
+    fn parse_expr(&mut self) -> Result<Expr, anyhow::Error> {
+        Ok(Expr::Column(Column {
+            name: self.expect_identifier()?.to_string(),
+        }))
+    }
+
+    fn parse_expr_result_column(&mut self) -> Result<ExprResultColumn, anyhow::Error> {
+        let expr = self.parse_expr()?;
+        let alias = if self.next_token_is(Token::As) {
+            self.pos += 1;
+            Some(self.expect_identifier()?.to_string())
+        } else {
+            None
+        };
+
+        Ok(ExprResultColumn { expr, alias })
+    }
+
+    fn parse_result_column(&mut self) -> Result<ResultColumn, anyhow::Error> {
+        if self.peek_next_token()? == &Token::Star {
+            self.pos += 1;
+            return Ok(ResultColumn::Star);
+        }
+
+        Ok(ResultColumn::Expr(self.parse_expr_result_column()?))
+    }
+
+    fn parse_result_columns(&mut self) -> Result<Vec<ResultColumn>, anyhow::Error> {
+        let mut result_columns = vec![self.parse_result_column()?];
+        while self.next_token_is(Token::Comma) {
+            self.pos += 1;
+            result_columns.push(self.parse_result_column()?);
+        }
+
+        Ok(result_columns)
     }
 
     fn next_token_is(&self, expected: Token) -> bool {
