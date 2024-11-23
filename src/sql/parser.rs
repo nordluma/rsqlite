@@ -1,13 +1,21 @@
 use anyhow::Context;
 
 use crate::sql::{
-    ast::{Column, Expr},
-    tokenizer::Token,
+    ast::{
+        Column, Expr, ExprResultColumn, ResultColumn, SelectCore, SelectFrom, SelectStatement,
+        Statement,
+    },
+    tokenizer::{self, Token},
 };
 
-use super::ast::{
-    ExprResultColumn, ResultColumn, SelectCore, SelectFrom, SelectStatement, Statement,
-};
+pub fn parse_statement(input: &str) -> Result<Statement, anyhow::Error> {
+    let tokens = tokenizer::tokenize(input)?;
+    let mut state = ParserState::new(tokens);
+    let statement = state.parse_statement()?;
+    state.expect_eq(Token::SemiColon)?;
+
+    Ok(statement)
+}
 
 #[derive(Debug)]
 struct ParserState {
