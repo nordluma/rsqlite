@@ -48,7 +48,7 @@ impl PageHeader {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PageType {
     TableLeaf,
     TableInterior,

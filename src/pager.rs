@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Context;
 
-use crate::page;
+use crate::page::{self, Cell, Page, PageType};
 
 // header consts
 pub const HEADER_SIZE: usize = 100;
@@ -13,7 +13,7 @@ const HEADER_PREFIX: &[u8] = b"SQLite format 3\0";
 const HEADER_PAGE_SIZE_OFFSET: usize = 16;
 
 const PAGE_MAX_SIZE: u32 = 65536;
-const PAGE_LEAF_HEADER_SIZE: usize = 8;
+//const PAGE_LEAF_HEADER_SIZE: usize = 8;
 
 const PAGE_LEAF_TABLE_ID: u8 = 0x0D; // 13
 const PAGE_INTERIOR_TABLE_ID: u8 = 0x05; // 5
@@ -52,7 +52,7 @@ impl<I: Read + Seek> Pager<I> {
     }
 
     fn load_page(&mut self, n: usize) -> Result<page::Page, anyhow::Error> {
-        let offset = HEADER_SIZE + n.saturating_sub(1) * self.page_size;
+        let offset = n.saturating_sub(1) * self.page_size;
 
         self.input
             .seek(SeekFrom::Start(offset as u64))
@@ -64,6 +64,32 @@ impl<I: Read + Seek> Pager<I> {
             .context("failed to read page")?;
 
         parse_page(&buffer, n)
+    }
+}
+
+#[derive(Debug)]
+pub struct PositionedPage {
+    pub page: Page,
+    pub cell: usize,
+}
+
+impl PositionedPage {
+    pub fn next_cell(&mut self) -> Option<&Cell> {
+        let cell = self.page.cells.get(self.cell);
+        self.cell += 1;
+
+        cell
+    }
+
+    pub fn next_page(&mut self) -> Option<u32> {
+        if self.page.header.page_type == PageType::TableInterior
+            && self.cell == self.page.cells.len()
+        {
+            self.cell += 1;
+            self.page.header.rightmost_pointer
+        } else {
+            None
+        }
     }
 }
 
