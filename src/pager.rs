@@ -50,7 +50,7 @@ impl<I: Read + Seek> Pager<I> {
     }
 
     fn load_page(&mut self, n: usize) -> Result<page::Page, anyhow::Error> {
-        let offset = n.saturating_add(1) * self.page_size;
+        let offset = HEADER_SIZE + n.saturating_sub(1) * self.page_size;
 
         self.input
             .seek(SeekFrom::Start(offset as u64))
