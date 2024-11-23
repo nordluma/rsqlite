@@ -1,3 +1,5 @@
-pub mod ast;
-pub mod parser;
-pub mod tokenizer;
+mod ast;
+mod parser;
+mod tokenizer;
+
+pub use parser::parse_statement;

@@ -1,7 +1,7 @@
 use std::io::{stdin, stdout, BufRead, Write};
 
 use anyhow::Context;
-use rsqlite::db;
+use rsqlite::{db, sql};
 
 fn main() -> Result<(), anyhow::Error> {
     let database = db::Db::from_file(std::env::args().nth(1).context("db file is required")?)?;
@@ -17,7 +17,10 @@ fn cli(mut db: db::Db) -> Result<(), anyhow::Error> {
         match line_buffer.trim() {
             ".exit" => break,
             ".tables" => display_tables(&mut db)?,
-            _ => println!("Unrecognized command '{}'", line_buffer.trim()),
+            stmt => match sql::parse_statement(stmt) {
+                Ok(stmt) => println!("{stmt:?}"),
+                Err(e) => println!("Error: {e}"),
+            },
         }
 
         print_flushed("\nrsqlite> ")?;
