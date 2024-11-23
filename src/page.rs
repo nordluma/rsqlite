@@ -4,15 +4,28 @@ pub struct DbHeader {
 }
 
 #[derive(Debug, Clone)]
-pub enum Page {
-    TableLeaf(TableLeafPage),
+pub struct Page {
+    pub header: PageHeader,
+    pub cell_pointers: Vec<u16>,
+    pub cells: Vec<Cell>,
 }
 
 #[derive(Debug, Clone)]
-pub struct TableLeafPage {
-    pub header: PageHeader,
-    pub cell_pointers: Vec<u16>,
-    pub cells: Vec<TableLeafCell>,
+pub enum Cell {
+    TableLeaf(TableLeafCell),
+    TableInterior(TableInteriorCell),
+}
+
+impl From<TableLeafCell> for Cell {
+    fn from(cell: TableLeafCell) -> Self {
+        Cell::TableLeaf(cell)
+    }
+}
+
+impl From<TableInteriorCell> for Cell {
+    fn from(cell: TableInteriorCell) -> Self {
+        Cell::TableInterior(cell)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -46,4 +59,10 @@ pub struct TableLeafCell {
     pub size: i64,
     pub row_id: i64,
     pub payload: Vec<u8>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TableInteriorCell {
+    pub left_child_page: u32,
+    pub key: i64,
 }

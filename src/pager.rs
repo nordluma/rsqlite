@@ -89,29 +89,37 @@ pub fn parse_header(buffer: &[u8]) -> Result<page::DbHeader, anyhow::Error> {
 fn parse_page(buffer: &[u8], page_num: usize) -> Result<page::Page, anyhow::Error> {
     // skip the database header if this is the first page we are parsing
     let ptr_offset = if page_num == 1 { HEADER_SIZE as u16 } else { 0 };
+    let content_buffer = &buffer[ptr_offset as usize..];
+    let header = parse_page_header(content_buffer)?;
+    let cell_pointers = parse_cell_pointers(
+        &content_buffer[header.byte_size()..],
+        header.cell_count as usize,
+        ptr_offset,
+    );
 
-    match buffer[0] {
-        PAGE_LEAF_TABLE_ID => parse_table_leaf_page(buffer, ptr_offset),
-        _ => Err(anyhow::anyhow!("unknown page type: {}", buffer[0])),
-    }
-}
+    let cells_parsing_fn = match header.page_type {
+        page::PageType::TableLeaf => parse_table_leaf_cell,
+        page::PageType::TableInterior => parse_table_interior_cell,
+    };
 
-fn parse_table_leaf_page(buffer: &[u8], ptr_offset: u16) -> Result<page::Page, anyhow::Error> {
-    let header = parse_page_header(buffer)?;
+    let cells = parse_cells(content_buffer, &cell_pointers, cells_parsing_fn)?;
 
-    let content_buffer = &buffer[PAGE_LEAF_HEADER_SIZE..];
-    let cell_pointers = parse_cell_pointers(content_buffer, header.cell_count as usize, ptr_offset);
-
-    let cells = cell_pointers
-        .iter()
-        .map(|&ptr| parse_table_leaf_cell(&buffer[ptr as usize..]))
-        .collect::<Result<Vec<page::TableLeafCell>, anyhow::Error>>()?;
-
-    Ok(page::Page::TableLeaf(page::TableLeafPage {
+    Ok(page::Page {
         header,
         cell_pointers,
         cells,
-    }))
+    })
+}
+
+fn parse_cells(
+    buffer: &[u8],
+    cell_pointers: &[u16],
+    parse_fn: impl Fn(&[u8]) -> Result<page::Cell, anyhow::Error>,
+) -> Result<Vec<page::Cell>, anyhow::Error> {
+    cell_pointers
+        .iter()
+        .map(|&ptr| parse_fn(&buffer[ptr as usize..]))
+        .collect()
 }
 
 fn parse_page_header(buffer: &[u8]) -> Result<page::PageHeader, anyhow::Error> {
@@ -154,7 +162,7 @@ fn parse_cell_pointers(buffer: &[u8], n: usize, ptr_offset: u16) -> Vec<u16> {
     pointers
 }
 
-fn parse_table_leaf_cell(mut buffer: &[u8]) -> Result<page::TableLeafCell, anyhow::Error> {
+fn parse_table_leaf_cell(mut buffer: &[u8]) -> Result<page::Cell, anyhow::Error> {
     let (n, size) = read_varint_at(buffer, 0);
     buffer = &buffer[n as usize..];
 
@@ -167,7 +175,21 @@ fn parse_table_leaf_cell(mut buffer: &[u8]) -> Result<page::TableLeafCell, anyho
         size,
         row_id,
         payload,
-    })
+    }
+    .into())
+}
+
+fn parse_table_interior_cell(mut buffer: &[u8]) -> Result<page::Cell, anyhow::Error> {
+    let left_child_page = read_be_double_at(buffer, 0);
+    buffer = &buffer[4..];
+
+    let (_, key) = read_varint_at(buffer, 0);
+
+    Ok(page::TableInteriorCell {
+        left_child_page,
+        key,
+    }
+    .into())
 }
 
 /// Read a variable length integer (`varint`) from the specified offset in a buffer.
