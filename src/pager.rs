@@ -117,7 +117,7 @@ fn parse_table_leaf_page(buffer: &[u8], ptr_offset: u16) -> Result<page::Page, a
 
 fn parse_page_header(buffer: &[u8]) -> Result<page::PageHeader, anyhow::Error> {
     let page_type = match buffer[0] {
-        0x0d => page::PageType::TableLeaf,
+        PAGE_LEAF_TABLE_ID => page::PageType::TableLeaf,
         _ => anyhow::bail!("unknown page type: {}", buffer[0]),
     };
 
