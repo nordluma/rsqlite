@@ -71,10 +71,10 @@ impl<I: Read + Seek> Pager<I> {
 pub fn parse_header(buffer: &[u8]) -> Result<page::DbHeader, anyhow::Error> {
     if !buffer.starts_with(HEADER_PREFIX) {
         let prefix = String::from_utf8_lossy(&buffer[..HEADER_PREFIX.len()]);
-        anyhow::bail!(format!(
+        anyhow::bail!(
             "invalid header prefix: {prefix} - expected: {}",
             String::from_utf8(HEADER_PREFIX.to_vec()).unwrap(),
-        ));
+        );
     }
 
     let page_size_raw = read_be_word_at(buffer, HEADER_PAGE_SIZE_OFFSET);
