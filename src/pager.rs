@@ -46,10 +46,7 @@ impl<I: Read + Seek> Pager<I> {
         let page = self.load_page(n)?;
         self.pages.insert(n, page);
 
-        Ok(self
-            .pages
-            .get(&n)
-            .expect("page was inserted before this call"))
+        Ok(self.pages.get(&n).expect("page inserted above"))
     }
 
     fn load_page(&mut self, n: usize) -> Result<page::Page, anyhow::Error> {
