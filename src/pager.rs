@@ -16,11 +16,13 @@ const PAGE_MAX_SIZE: u32 = 65536;
 const PAGE_LEAF_HEADER_SIZE: usize = 8;
 
 const PAGE_LEAF_TABLE_ID: u8 = 0x0D; // 13
+const PAGE_INTERIOR_TABLE_ID: u8 = 0x05; // 5
 
 const PAGE_FIRST_FREEBLOCK_OFFSET: usize = 1;
 const PAGE_CELL_COUNT_OFFSET: usize = 3;
 const PAGE_CELL_CONTENT_OFFSET: usize = 5;
 const PAGE_FRAGMENTED_BYTES_COUNT_OFFSET: usize = 7;
+const PAGE_RIGHTMOST_POINTER_OFFSET: usize = 8;
 
 #[derive(Debug)]
 pub struct Pager<I: Read + Seek = std::fs::File> {
@@ -113,8 +115,9 @@ fn parse_table_leaf_page(buffer: &[u8], ptr_offset: u16) -> Result<page::Page, a
 }
 
 fn parse_page_header(buffer: &[u8]) -> Result<page::PageHeader, anyhow::Error> {
-    let page_type = match buffer[0] {
-        PAGE_LEAF_TABLE_ID => page::PageType::TableLeaf,
+    let (page_type, has_rightmost_ptr) = match buffer[0] {
+        PAGE_LEAF_TABLE_ID => (page::PageType::TableLeaf, false),
+        PAGE_INTERIOR_TABLE_ID => (page::PageType::TableInterior, true),
         _ => anyhow::bail!("unknown page type: {}", buffer[0]),
     };
 
@@ -126,12 +129,19 @@ fn parse_page_header(buffer: &[u8]) -> Result<page::PageHeader, anyhow::Error> {
     };
     let fragmented_bytes_count = buffer[PAGE_FRAGMENTED_BYTES_COUNT_OFFSET];
 
+    let rightmost_pointer = if has_rightmost_ptr {
+        Some(read_be_double_at(buffer, PAGE_RIGHTMOST_POINTER_OFFSET))
+    } else {
+        None
+    };
+
     Ok(page::PageHeader {
         page_type,
         first_freeblock,
         cell_count,
         cell_content_offset,
         fragmented_bytes_count,
+        rightmost_pointer,
     })
 }
 
@@ -198,4 +208,8 @@ pub fn read_varint_at(buffer: &[u8], mut offset: usize) -> (u8, i64) {
 
 fn read_be_word_at(input: &[u8], offset: usize) -> u16 {
     u16::from_be_bytes(input[offset..offset + 2].try_into().unwrap())
+}
+
+fn read_be_double_at(input: &[u8], offset: usize) -> u32 {
+    u32::from_be_bytes(input[offset..offset + 4].try_into().unwrap())
 }

@@ -22,11 +22,23 @@ pub struct PageHeader {
     pub cell_count: u16,
     pub cell_content_offset: u32,
     pub fragmented_bytes_count: u8,
+    pub rightmost_pointer: Option<u32>,
+}
+
+impl PageHeader {
+    pub fn byte_size(&self) -> usize {
+        if self.rightmost_pointer.is_some() {
+            12
+        } else {
+            8
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum PageType {
     TableLeaf,
+    TableInterior,
 }
 
 #[derive(Debug, Clone)]
