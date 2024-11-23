@@ -17,3 +17,33 @@ impl Token {
         }
     }
 }
+
+pub fn tokenize(input: &str) -> Result<Vec<Token>, anyhow::Error> {
+    let mut tokens = Vec::new();
+    let mut chars = input.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        match c {
+            '*' => tokens.push(Token::Star),
+            ',' => tokens.push(Token::Comma),
+            ';' => tokens.push(Token::SemiColon),
+            c if c.is_whitespace() => continue,
+            c if c.is_alphabetic() => {
+                let mut ident = c.to_string().to_lowercase();
+                while let Some(cc) = chars.next_if(|&cc| cc.is_alphanumeric() || cc == '_') {
+                    ident.extend(cc.to_lowercase());
+                }
+
+                match ident.as_str() {
+                    "select" => tokens.push(Token::Select),
+                    "as" => tokens.push(Token::As),
+                    "from" => tokens.push(Token::From),
+                    _ => tokens.push(Token::Identifier(ident)),
+                }
+            }
+            _ => anyhow::bail!("unexpected character: {c}"),
+        }
+    }
+
+    Ok(tokens)
+}
